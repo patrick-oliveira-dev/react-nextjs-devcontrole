@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TicketItem } from "./components/ticket";
+import prismaClient from "@/lib/prisma"
 
 export default async function Dashboard() {
 
@@ -13,6 +14,19 @@ export default async function Dashboard() {
     redirect("/")
   }
 
+  const tickets = await prismaClient.ticket.findMany({
+    where: {
+      status: "ABERTO",
+      customer: {
+        userId: session.user.id
+      }
+    }, include: {
+      customer: true,
+    }, orderBy: {
+      created_at: "desc"
+    }
+  })
+
   return (
     <Container>
       <main className="mt-9 mb-2">
@@ -21,7 +35,7 @@ export default async function Dashboard() {
           <Link href="/dashboard/new" className="bg-blue-500 px-4 py-1 rounded text-white">Abrir chamado</Link>
         </div>
 
-        <table className="min-w-full my-2">
+        <table className="min-w-full my-8">
           <thead>
             <tr>
               <th className="font-medium text-left pl-1">CLIENTE</th>
@@ -31,9 +45,14 @@ export default async function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            <TicketItem/>
+            {tickets.map( ticket => (
+              <TicketItem key={ticket.id} ticket={ticket} customer={ticket.customer}/>
+            ))}
           </tbody>
         </table>
+        {tickets.length === 0 && (
+          <h1 className="text-gray-600 text-center justify-center mt-7">Não existem chamados abertos no momento.</h1>
+        )}
       </main>
     </Container>
   );
